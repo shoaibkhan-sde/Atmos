@@ -40,14 +40,14 @@ app.use(helmet({
   }
 }));
 
-// 3. CORS setup with origin limits
+// 3. CORS setup with origin limits (only applied to /api routes)
 const allowedOrigins = ["http://localhost:3000", `http://localhost:${env.PORT}`, env.CORS_ORIGIN];
-app.use(cors({
+app.use("/api", cors({
   origin: (origin, callback) => {
     if (!origin || allowedOrigins.indexOf(origin) !== -1) {
       callback(null, true);
     } else {
-      callback(new Error("CORS policy violation: Unauthorized origin"));
+      callback(null, false);
     }
   },
   credentials: true
@@ -73,8 +73,22 @@ if (env.NODE_ENV === "production") {
   console.log(`Serving static files in production from: ${distPath}`);
   
   if (fs.existsSync(distPath)) {
-    app.use(express.static(distPath));
+    app.use(express.static(distPath, {
+      setHeaders: (res, filePath) => {
+        if (path.extname(filePath) === ".html") {
+          res.setHeader("Cache-Control", "no-store, no-cache, must-revalidate, proxy-revalidate");
+          res.setHeader("Pragma", "no-cache");
+          res.setHeader("Expires", "0");
+        } else {
+          // Static assets (JS, CSS, images, etc.) are hashed and can be cached aggressively
+          res.setHeader("Cache-Control", "public, max-age=31536000, immutable");
+        }
+      }
+    }));
     app.get(/.*/, (req, res) => {
+      res.setHeader("Cache-Control", "no-store, no-cache, must-revalidate, proxy-revalidate");
+      res.setHeader("Pragma", "no-cache");
+      res.setHeader("Expires", "0");
       res.sendFile(path.join(distPath, "index.html"));
     });
   } else {

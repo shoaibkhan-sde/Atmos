@@ -99,28 +99,40 @@ export const AtmosCoach: React.FC<AtmosCoachProps> = ({
     }
   };
 
-  // 4. Safe renderer for AI text to prevent XSS (neutralizes HTML tags and converts markdown bold/newlines)
+  // 4. Safe renderer for AI text to prevent XSS (converts markdown bold, bullet lists, and newlines to React elements directly)
   const renderSafeAIContent = (text: string) => {
-    // Escape standard HTML brackets
-    const escaped = text
-      .replace(/&/g, "&amp;")
-      .replace(/</g, "&lt;")
-      .replace(/>/g, "&gt;");
-    
-    // Convert markdown bold to html tags
-    const withBold = escaped.replace(/\*\*(.*?)\*\*/g, "<strong>$1</strong>");
-    
-    // Convert bullet lists
-    const withBullets = withBold.replace(/^\s*\*\s+(.*)$/gm, "• $1");
-
-    // Convert newlines to breaks
-    const withNewlines = withBullets.replace(/\n/g, "<br />");
+    const lines = text.split("\n");
 
     return (
-      <span 
-        className="text-sm leading-relaxed" 
-        dangerouslySetInnerHTML={{ __html: withNewlines }} 
-      />
+      <span className="text-sm leading-relaxed">
+        {lines.map((line, lineIdx) => {
+          // Check for bullet lists
+          let processedLine = line;
+          const bulletMatch = line.match(/^\s*\*\s+(.*)$/);
+          if (bulletMatch) {
+            processedLine = `• ${bulletMatch[1]}`;
+          }
+
+          // Split line into bold and non-bold segments
+          const segments = processedLine.split(/(\*\*.*?\*\*)/g);
+
+          return (
+            <React.Fragment key={`line-${lineIdx}`}>
+              {lineIdx > 0 && <br />}
+              {segments.map((segment, segIdx) => {
+                if (segment.startsWith("**") && segment.endsWith("**")) {
+                  return (
+                    <strong key={`seg-${segIdx}`}>
+                      {segment.slice(2, -2)}
+                    </strong>
+                  );
+                }
+                return segment;
+              })}
+            </React.Fragment>
+          );
+        })}
+      </span>
     );
   };
 
