@@ -56,7 +56,7 @@ describe("Atmos ActivityLogger Component UI", () => {
     );
 
     // Trigger quick-add vegan commute using button role matching
-    const veganBtns = screen.getAllByText("Vegan Day");
+    const veganBtns = screen.getAllByText("Ate Vegan");
     const buttonElement = veganBtns[0].closest("button");
     expect(buttonElement).toBeInTheDocument();
     fireEvent.click(buttonElement!);

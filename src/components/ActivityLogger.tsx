@@ -243,7 +243,7 @@ export const ActivityLogger: React.FC<ActivityLoggerProps> = ({
             className="ledger-card p-4 hover:border-accent-teal/50 text-center flex flex-col items-center justify-center space-y-2 group transition-all"
           >
             <Zap className="text-accent-teal group-hover:scale-110 transition-transform" size={20} />
-            <span className="text-xs font-bold text-white block">Petrol Commute</span>
+            <span className="text-xs font-bold text-white block">Drive to Work</span>
             <span className="text-[10px] font-mono text-muted">20 km (3.6kg)</span>
           </button>
           
@@ -253,7 +253,7 @@ export const ActivityLogger: React.FC<ActivityLoggerProps> = ({
             className="ledger-card p-4 hover:border-accent-teal/50 text-center flex flex-col items-center justify-center space-y-2 group transition-all"
           >
             <Zap className="text-cyan-500 group-hover:scale-110 transition-transform" size={20} />
-            <span className="text-xs font-bold text-white block">Train Commute</span>
+            <span className="text-xs font-bold text-white block">Take the Train</span>
             <span className="text-[10px] font-mono text-muted">30 km (0.9kg)</span>
           </button>
 
@@ -263,8 +263,8 @@ export const ActivityLogger: React.FC<ActivityLoggerProps> = ({
             className="ledger-card p-4 hover:border-accent-teal/50 text-center flex flex-col items-center justify-center space-y-2 group transition-all"
           >
             <Zap className="text-emerald-500 group-hover:scale-110 transition-transform" size={20} />
-            <span className="text-xs font-bold text-white block">Vegan Day</span>
-            <span className="text-[10px] font-mono text-muted">1 Day (4.1kg)</span>
+            <span className="text-xs font-bold text-white block">Ate Vegan</span>
+            <span className="text-[10px] font-mono text-muted">(4.1kg)</span>
           </button>
 
           <button
@@ -273,8 +273,8 @@ export const ActivityLogger: React.FC<ActivityLoggerProps> = ({
             className="ledger-card p-4 hover:border-accent-teal/50 text-center flex flex-col items-center justify-center space-y-2 group transition-all"
           >
             <Zap className="text-accent-red group-hover:scale-110 transition-transform" size={20} />
-            <span className="text-xs font-bold text-white block">Meat-Heavy Day</span>
-            <span className="text-[10px] font-mono text-muted">1 Day (9.0kg)</span>
+            <span className="text-xs font-bold text-white block">Standard Diet</span>
+            <span className="text-[10px] font-mono text-muted">(9.0kg)</span>
           </button>
 
           <button
@@ -283,8 +283,8 @@ export const ActivityLogger: React.FC<ActivityLoggerProps> = ({
             className="ledger-card p-4 hover:border-accent-teal/50 text-center flex flex-col items-center justify-center space-y-2 group col-span-2 sm:col-span-1 transition-all"
           >
             <Zap className="text-purple-500 group-hover:scale-110 transition-transform" size={20} />
-            <span className="text-xs font-bold text-white block">Buy Clothing</span>
-            <span className="text-[10px] font-mono text-muted">1 Item (15.0kg)</span>
+            <span className="text-xs font-bold text-white block">New Clothes</span>
+            <span className="text-[10px] font-mono text-muted">(15.0kg)</span>
           </button>
         </div>
       </div>
