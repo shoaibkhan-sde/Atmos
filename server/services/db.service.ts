@@ -23,9 +23,19 @@ const defaultState: DBState = {
   achievements: [],
 };
 
+/**
+ * JSON-file database service with in-memory state and atomic disk persistence.
+ *
+ * Design:
+ * - All reads are served from an in-memory `state` object (zero-latency).
+ * - Writes are debounced (300ms) and persisted atomically via temp-file + rename.
+ * - A Promise-based write mutex prevents concurrent writes from corrupting `db.json`.
+ */
 class DbService {
   private state: DBState = { ...defaultState };
   private writeTimeout: NodeJS.Timeout | null = null;
+  /** Write mutex: queues concurrent disk writes to prevent corruption. */
+  private writeLock: Promise<void> = Promise.resolve();
 
   constructor() {
     this.initDB();
@@ -71,22 +81,32 @@ class DbService {
     }, 300);
   }
 
+  /**
+   * Atomically persists the current in-memory state to disk.
+   *
+   * Strategy: write to a temp file first, then rename over the actual file.
+   * This prevents partial writes from corrupting the DB. Uses a Promise-based
+   * mutex to serialize concurrent write attempts.
+   */
   private saveDBAtomic(): void {
-    try {
-      // Write to temp file
-      fs.writeFileSync(TEMP_DB_FILE, JSON.stringify(this.state, null, 2), "utf-8");
-      // Atomic rename
-      fs.renameSync(TEMP_DB_FILE, DB_FILE);
-    } catch (error) {
-      console.warn("⚠️ Atomic rename failed, falling back to direct write:", error);
+    this.writeLock = this.writeLock.then(() => {
       try {
-        fs.writeFileSync(DB_FILE, JSON.stringify(this.state, null, 2), "utf-8");
-      } catch (directError) {
-        console.error("❌ Direct database write also failed:", directError);
+        // Write to temp file
+        fs.writeFileSync(TEMP_DB_FILE, JSON.stringify(this.state, null, 2), "utf-8");
+        // Atomic rename
+        fs.renameSync(TEMP_DB_FILE, DB_FILE);
+      } catch (error) {
+        console.warn("⚠️ Atomic rename failed, falling back to direct write:", error);
+        try {
+          fs.writeFileSync(DB_FILE, JSON.stringify(this.state, null, 2), "utf-8");
+        } catch (directError) {
+          console.error("❌ Direct database write also failed:", directError);
+        }
       }
-    }
+    });
   }
 
+  /** Returns the current user profile with a synthetic user ID, or null if unset. */
   public getProfile(): (UserProfile & { userId: string }) | null {
     if (!this.state.profile) return null;
     return {
@@ -95,6 +115,7 @@ class DbService {
     };
   }
 
+  /** Persists a user profile to the in-memory state and schedules a disk write. */
   public saveProfile(profile: UserProfile): UserProfile {
     this.state.profile = {
       ...profile,
@@ -103,6 +124,7 @@ class DbService {
     return this.state.profile;
   }
 
+  /** Returns all logged activities sorted newest-first, each augmented with a synthetic user ID. */
   public getActivities(): (ActivityLog & { userId: string })[] {
     return this.state.activities.map((act) => ({
       ...act,
@@ -110,6 +132,7 @@ class DbService {
     }));
   }
 
+  /** Upserts an activity (insert or update by ID) and schedules a disk write. */
   public saveActivity(activity: ActivityLog): void {
     const idx = this.state.activities.findIndex((a) => a.id === activity.id);
     if (idx !== -1) {
@@ -121,6 +144,7 @@ class DbService {
     this.saveDBDebounced();
   }
 
+  /** Deletes an activity by ID. Returns true if found and removed, false otherwise. */
   public deleteActivity(id: string): boolean {
     const idx = this.state.activities.findIndex((a) => a.id === id);
     if (idx === -1) return false;
@@ -129,6 +153,7 @@ class DbService {
     return true;
   }
 
+  /** Returns the current reduction goals with a synthetic user ID. */
   public getGoals(): { targetPercent: number; targetAnnualKg: number; userId: string } {
     return {
       ...this.state.goals,

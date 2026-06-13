@@ -4,6 +4,15 @@ import { generateLocalCoachData, generateLocalChatResponse } from "../../src/lib
 import { dbService } from "./db.service.js";
 import { AtmosCoachResponse, UserProfile, ActivityLog } from "../types/index.js";
 
+/**
+ * AI integration service that acts as a proxy to the Google Gemini API.
+ * 
+ * Features:
+ * - Safely handles API key detection and initialization.
+ * - Implements a graceful fallback to a local rule-based engine if Gemini is
+ *   unavailable, unconfigured, or returns an error.
+ * - Enforces JSON structured output for the dashboard insights.
+ */
 class GeminiService {
   private genAI: GoogleGenerativeAI | null = null;
 
@@ -17,10 +26,25 @@ class GeminiService {
     }
   }
 
+  /**
+   * Checks whether the Gemini client was successfully initialized.
+   * @returns true if an API key was provided and valid.
+   */
   public isGeminiActive(): boolean {
     return this.genAI !== null;
   }
 
+  /**
+   * Generates a comprehensive personalized carbon coaching dashboard response.
+   * 
+   * Provides insight on the user's primary emission drivers, feedback on their
+   * goal progress, and an actionable 3-5 step reduction plan.
+   * 
+   * @param profile - The user's onboarding profile.
+   * @param activities - The user's logged activity history.
+   * @param targetPercent - The goal reduction percentage (e.g., 15).
+   * @returns Structured coach data ensuring strict JSON schema adherence.
+   */
   public async generateInsights(
     profile: UserProfile | null,
     activities: ActivityLog[],
@@ -85,6 +109,17 @@ Output ONLY the raw valid JSON, no markdown syntax wrapper (like \`\`\`json).
     }
   }
 
+  /**
+   * Generates a natural language response to a user's conversational query.
+   * 
+   * Contextualizes the prompt with the user's current carbon footprint and goals
+   * to provide accurate, personalized advice.
+   * 
+   * @param message - The user's question or message.
+   * @param profile - The user's profile context.
+   * @param activities - The user's transaction history.
+   * @returns An object containing the reply string and a flag indicating if the local fallback was used.
+   */
   public async sendChatMessage(
     message: string,
     profile: UserProfile | null,

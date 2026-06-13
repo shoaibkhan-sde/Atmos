@@ -17,6 +17,43 @@ interface ChatMessage {
   timestamp: string;
 }
 
+// 4. Safe renderer for AI text to prevent XSS (converts markdown bold, bullet lists, and newlines to React elements directly)
+export const renderSafeAIContent = (text: string) => {
+  const lines = text.split("\n");
+
+  return (
+    <span className="text-sm leading-relaxed">
+      {lines.map((line, lineIdx) => {
+        // Check for bullet lists
+        let processedLine = line;
+        const bulletMatch = line.match(/^\s*\*\s+(.*)$/);
+        if (bulletMatch) {
+          processedLine = `• ${bulletMatch[1]}`;
+        }
+
+        // Split line into bold and non-bold segments
+        const segments = processedLine.split(/(\*\*.*?\*\*)/g);
+
+        return (
+          <React.Fragment key={`line-${lineIdx}`}>
+            {lineIdx > 0 && <br />}
+            {segments.map((segment, segIdx) => {
+              if (segment.startsWith("**") && segment.endsWith("**")) {
+                return (
+                  <strong key={`seg-${segIdx}`}>
+                    {segment.slice(2, -2)}
+                  </strong>
+                );
+              }
+              return segment;
+            })}
+          </React.Fragment>
+        );
+      })}
+    </span>
+  );
+};
+
 export const AtmosCoach: React.FC<AtmosCoachProps> = ({
   profile,
   activities,
@@ -99,43 +136,6 @@ export const AtmosCoach: React.FC<AtmosCoachProps> = ({
     }
   };
 
-  // 4. Safe renderer for AI text to prevent XSS (converts markdown bold, bullet lists, and newlines to React elements directly)
-  const renderSafeAIContent = (text: string) => {
-    const lines = text.split("\n");
-
-    return (
-      <span className="text-sm leading-relaxed">
-        {lines.map((line, lineIdx) => {
-          // Check for bullet lists
-          let processedLine = line;
-          const bulletMatch = line.match(/^\s*\*\s+(.*)$/);
-          if (bulletMatch) {
-            processedLine = `• ${bulletMatch[1]}`;
-          }
-
-          // Split line into bold and non-bold segments
-          const segments = processedLine.split(/(\*\*.*?\*\*)/g);
-
-          return (
-            <React.Fragment key={`line-${lineIdx}`}>
-              {lineIdx > 0 && <br />}
-              {segments.map((segment, segIdx) => {
-                if (segment.startsWith("**") && segment.endsWith("**")) {
-                  return (
-                    <strong key={`seg-${segIdx}`}>
-                      {segment.slice(2, -2)}
-                    </strong>
-                  );
-                }
-                return segment;
-              })}
-            </React.Fragment>
-          );
-        })}
-      </span>
-    );
-  };
-
   return (
     <section className="space-y-6" aria-label="Atmos Coach Interface">
       {/* Page Title & Status Badge */}
@@ -145,7 +145,7 @@ export const AtmosCoach: React.FC<AtmosCoachProps> = ({
             Atmos AI Coach
             <Sparkles className="text-accent-teal animate-pulse" size={18} />
           </h2>
-          <p className="text-xs text-muted">Personalized carbon-saving advisory powered by Gemini.</p>
+          <p className="text-xs text-muted">Reduce your footprint with personalized carbon-saving advisory powered by Gemini.</p>
         </div>
 
         {coachData && (
@@ -171,7 +171,7 @@ export const AtmosCoach: React.FC<AtmosCoachProps> = ({
           ) : coachData ? (
             <>
               {/* Main Driver Insight card */}
-              <div className="ledger-card border-accent-teal/20 space-y-3">
+              <div className="ledger-card border-accent-teal/20 space-y-3" aria-live="polite">
                 <div className="flex items-center gap-2 text-accent-teal font-bold text-sm uppercase tracking-wider">
                   <Bot size={18} />
                   <span>Ledger Analytics Insight</span>
@@ -182,7 +182,7 @@ export const AtmosCoach: React.FC<AtmosCoachProps> = ({
               </div>
 
               {/* Goal Progress Coaching card */}
-              <div className="ledger-card border-border/60 space-y-3">
+              <div className="ledger-card border-border/60 space-y-3" aria-live="polite">
                 <div className="flex items-center gap-2 text-muted font-bold text-sm uppercase tracking-wider">
                   <AlertCircle size={18} />
                   <span>Goal status review</span>
@@ -229,7 +229,7 @@ export const AtmosCoach: React.FC<AtmosCoachProps> = ({
 
                         <button
                           onClick={() => onAdoptAction(action)}
-                          className="flex items-center gap-1 text-xs font-semibold text-accent-teal hover:underline"
+                          className="flex items-center gap-1 text-xs font-semibold text-accent-teal hover:underline min-h-[44px] px-2"
                           aria-label={`Adopt action: ${action.title}`}
                         >
                           Adopt Task

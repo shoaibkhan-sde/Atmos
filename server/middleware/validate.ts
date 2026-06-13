@@ -1,7 +1,13 @@
 import { Request, Response, NextFunction } from "express";
-import { z, AnyZodObject } from "zod";
+import { z } from "zod";
 
-// Helper to sanitize strings to prevent XSS / malicious input
+/**
+ * Helper to sanitize strings to prevent XSS / malicious input.
+ * Strips out HTML tags and trims whitespace.
+ * 
+ * @param str - The raw input string
+ * @returns The sanitized string
+ */
 export const sanitizeString = (str: string): string => {
   return str.replace(/<[^>]*>/g, "").trim();
 };
@@ -43,7 +49,15 @@ export const chatSchema = z.object({
   }),
 });
 
-export const validate = (schema: AnyZodObject) => {
+/**
+ * Zod validation middleware factory.
+ * Validates the request body, query, and params against the provided Zod schema.
+ * Replaces the request properties with their parsed & sanitized versions.
+ * 
+ * @param schema - The Zod schema to validate against
+ * @returns An Express middleware function
+ */
+export const validate = (schema: z.ZodSchema<any>) => {
   return async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     let parsed;
     try {
@@ -52,7 +66,7 @@ export const validate = (schema: AnyZodObject) => {
         query: req.query,
         params: req.params,
       });
-    } catch (error) {
+    } catch (error: any) {
       console.error("Validation failed for route:", req.originalUrl, error);
       if (error instanceof z.ZodError) {
         res.status(400).json({
@@ -60,7 +74,7 @@ export const validate = (schema: AnyZodObject) => {
           error: {
             code: "VALIDATION_ERROR",
             message: "Input validation failed",
-            details: error.errors,
+            details: (error as any).errors || (error as any).issues,
           },
         });
         return;

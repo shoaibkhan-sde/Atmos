@@ -86,4 +86,30 @@ describe("Backend Insights & Caching REST API", () => {
     expect(response.body.actionPlan).toBeDefined();
     expect(response.body.usingFallback).toBe(true);
   });
+
+  it("should generate consistent state hashes for identical inputs", () => {
+    const activities = [
+      { id: "1", date: "2023-01-01", category: "Transport", type: "car_petrol", value: 10, emissions: 1.8 }
+    ];
+    
+    const hash1 = cacheService.generateStateHash(testProfile, activities, 15);
+    const hash2 = cacheService.generateStateHash(testProfile, activities, 15);
+    expect(hash1).toBe(hash2);
+
+    // Should change if profile changes
+    const hash3 = cacheService.generateStateHash({ ...testProfile, country: "UK" }, activities, 15);
+    expect(hash1).not.toBe(hash3);
+
+    // Should change if activities change
+    const activitiesNew = [
+      { id: "1", date: "2023-01-01", category: "Transport", type: "car_petrol", value: 10, emissions: 1.8 },
+      { id: "2", date: "2023-01-02", category: "Food", type: "vegan", value: 1, emissions: 4.1 }
+    ];
+    const hash4 = cacheService.generateStateHash(testProfile, activitiesNew, 15);
+    expect(hash1).not.toBe(hash4);
+
+    // Should change if goal changes
+    const hash5 = cacheService.generateStateHash(testProfile, activities, 20);
+    expect(hash1).not.toBe(hash5);
+  });
 });

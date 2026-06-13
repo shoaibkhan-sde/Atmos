@@ -16,6 +16,11 @@ dist-ssr
 
 # Local databases
 server/data/db.json
+server/data/db.test.json
+server/data/*.tmp.json
+
+# Scratch/dump files
+all_my_code.txt
 
 # Editor directories
 .vscode/*

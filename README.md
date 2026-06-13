@@ -28,6 +28,20 @@ Atmos addresses the core PromptWars Virtual Challenge 3 criteria across three fu
    - Suggests a ranked list of 3-5 high-impact, actionable tasks with calculated weekly $kg\ CO_2e$ savings.
    - Features an interactive checklist of habits that dynamically updates dashboard calculations.
 
+### PromptWars Virtual Challenge 3 — Criteria Mapping
+
+| Pillar | Requirement | Implementation / Location |
+|---|---|---|
+| **Understand** | Visual breakdown of carbon expenses | `Dashboard.tsx` (Recharts Pie/Bar components) |
+| **Understand** | Concrete comparisons | `Dashboard.tsx` (Trees to absorb, km driven equivalencies) |
+| **Understand** | Paris Agreement & global benchmarks | `Dashboard.tsx` (Comparison Panel) |
+| **Track** | Quick logging mechanism | `QuickAddPanel.tsx` (1-click debits) |
+| **Track** | Detailed custom logging | `ActivityForm.tsx` (Date, Category, Type, Qty) |
+| **Track** | Daily streak gamification | `useAppState.ts` (calculateStreak) & `Dashboard.tsx` (Badge) |
+| **Reduce** | Data-driven AI insights | `gemini.service.ts` & `AtmosCoach.tsx` |
+| **Reduce** | 3-5 actionable tasks w/ savings | `gemini.service.ts` (JSON schema constraint) |
+| **Reduce** | Interactive checklist of habits | `ActionsList.tsx` (Adopt Action flow) |
+
 ---
 
 ## 🛠️ Technology Stack

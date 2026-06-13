@@ -1,6 +1,11 @@
 /**
  * ATMOS EMISSION FACTORS & CALCULATIONS ENGINE
- * 
+ *
+ * Central source of truth for all carbon emission intensity constants
+ * and calculation formulas used across the application (both client-side
+ * and server-side). No emission factor values should be duplicated
+ * outside this module.
+ *
  * Sources:
  * - Greenhouse Gas Protocol (GHGP)
  * - UK Department for Environment, Food & Rural Affairs (DEFRA 2023)
@@ -8,7 +13,13 @@
  * - IPCC (Intergovernmental Panel on Climate Change)
  */
 
-// Grid electricity intensities (kg CO2e per kWh)
+/**
+ * Grid electricity carbon intensities by country ISO code.
+ * Units: kg CO2e per kilowatt-hour (kWh).
+ *
+ * Values reflect the national average grid mix including transmission losses.
+ * Falls back to `GLOBAL_AVG` (0.475 kg/kWh) for unrecognized country codes.
+ */
 export const GRID_INTENSITIES: Record<string, number> = {
   // Coal-heavy grids
   "IN": 0.82, // India
@@ -32,7 +43,12 @@ export const GRID_INTENSITIES: Record<string, number> = {
   "GLOBAL_AVG": 0.475,
 };
 
-// Transport emission factors (kg CO2e per km)
+/**
+ * Transport emission factors by vehicle/mode type.
+ * Units: kg CO2e per kilometre (km).
+ *
+ * Passenger-km values for public transit; per-vehicle-km for private transport.
+ */
 export const TRANSPORT_FACTORS: Record<string, number> = {
   "car_petrol": 0.18,      // Average petrol car (EPA)
   "car_diesel": 0.17,      // Average diesel car (DEFRA)
@@ -46,7 +62,13 @@ export const TRANSPORT_FACTORS: Record<string, number> = {
   "cycling_walking": 0.0,  // Zero tailpipe emissions
 };
 
-// Diet annual footprints (kg CO2e per year)
+/**
+ * Annual diet footprints by dietary pattern.
+ * Units: kg CO2e per year.
+ *
+ * Includes full food-system lifecycle (production, transport, retail, waste).
+ * To compute a per-day figure, divide by 365.
+ */
 export const DIET_FACTORS: Record<string, number> = {
   "meat_heavy": 3300,  // Daily: ~9.0 kg CO2e
   "average": 2500,     // Daily: ~6.8 kg CO2e
@@ -54,53 +76,83 @@ export const DIET_FACTORS: Record<string, number> = {
   "vegan": 1500,       // Daily: ~4.1 kg CO2e
 };
 
-// Consumption factors (kg CO2e per unit/kg)
+/**
+ * Consumer goods emission factors by product type.
+ * Units: kg CO2e per unit (item or kg depending on category).
+ *
+ * Captures manufacturing, distribution, and lifecycle emissions.
+ */
 export const CONSUMPTION_FACTORS: Record<string, number> = {
   "clothing": 15.0,     // Average garment manufacturing & distribution lifecycle
   "electronics": 80.0,  // Smartphone/laptop average production lifecycle
   "general_goods": 5.0, // General retail goods per kg
 };
 
-// Waste factors (kg CO2e per kg of waste)
+/**
+ * Waste disposal emission factors by disposal method.
+ * Units: kg CO2e per kilogram of waste.
+ *
+ * Landfill values include methane generation (CH4 is 28× more potent than CO2).
+ */
 export const WASTE_FACTORS: Record<string, number> = {
   "landfill": 0.50,   // Mixed waste sent to landfill (methane emissions)
   "recycling": 0.10,  // Processing emissions for recycled materials
   "composting": 0.05, // Organic waste composting emissions
 };
 
-// Home Energy fuel factors (kg CO2e per unit)
+/**
+ * Home heating fuel emission factors.
+ * Units: kg CO2e per unit (m³ for natural gas, litres for heating oil).
+ */
 export const ENERGY_FACTORS: Record<string, number> = {
-  "natural_gas": 1.90, // per cubic meter (m3)
+  "natural_gas": 1.90, // per cubic meter (m³)
   "heating_oil": 2.70, // per liter (L)
 };
 
-// Profile types for Onboarding
+/** User profile captured during onboarding. */
 export interface UserProfile {
   country: string;
   householdSize: number;
-  primaryTransport: string; // car_petrol, public, electric, active, etc.
+  /** Transport mode key: "car_petrol", "public", "electric", "active", etc. */
+  primaryTransport: string;
   weeklyTransportKm: number;
-  dietType: string;         // meat_heavy, average, vegetarian, vegan
-  electricityKwh: number;   // monthly household electricity
-  heatingType: string;      // natural_gas, heating_oil, electric, none
-  heatingQty: number;       // monthly household heating qty (m3, L, or kWh if electric)
-  recycleCompost: boolean;  // waste practice
+  /** Diet type key: "meat_heavy", "average", "vegetarian", "vegan". */
+  dietType: string;
+  /** Monthly household electricity consumption in kWh. */
+  electricityKwh: number;
+  /** Heating fuel key: "natural_gas", "heating_oil", "electric", "none". */
+  heatingType: string;
+  /** Monthly household heating quantity (m³, L, or kWh if electric). */
+  heatingQty: number;
+  recycleCompost: boolean;
 }
 
-// Activity types for Logged Transactions
+/** A single carbon activity transaction logged by the user. */
 export interface ActivityLog {
   id: string;
-  date: string; // YYYY-MM-DD
+  /** Date in YYYY-MM-DD format. */
+  date: string;
   category: "Transport" | "Energy" | "Food" | "Shopping" | "Waste";
-  type: string; // e.g., 'car_petrol', 'flight_short', 'meat_heavy', etc.
-  value: number; // e.g., distance in km, meals in count, items in count, kg in waste
-  emissions: number; // Calculated kg CO2e
-  note?: string; // Optional description
+  /** Activity sub-type key matching the corresponding factor record. */
+  type: string;
+  /** Quantity (km, kWh, items, kg, days — depends on category). */
+  value: number;
+  /** Calculated emissions in kg CO2e. */
+  emissions: number;
+  note?: string;
 }
 
 /**
- * Calculates emissions for a single activity.
- * Returns emissions in kg CO2e.
+ * Calculates emissions for a single activity transaction.
+ *
+ * Applies the appropriate emission factor based on category and type,
+ * using the user's country code for grid-dependent calculations.
+ *
+ * @param category - Activity category ("Transport", "Energy", "Food", "Shopping", "Waste").
+ * @param type - Activity sub-type key (e.g. "car_petrol", "electricity", "vegan").
+ * @param value - Quantity in the category's native unit.
+ * @param countryCode - ISO country code for grid intensity lookup (default "US").
+ * @returns Emissions in kg CO2e, rounded to 2 decimal places. Returns 0 for non-positive values.
  */
 export function calculateEmissions(
   category: ActivityLog["category"],
@@ -127,7 +179,7 @@ export function calculateEmissions(
     }
 
     case "Food": {
-      // Diet values are usually processed as number of days.
+      // Diet values are processed as number of days.
       // A daily rate is computed as annual rate / 365.
       const annualDietFootprint = DIET_FACTORS[type] ?? DIET_FACTORS["average"];
       const dailyDietFootprint = annualDietFootprint / 365;
@@ -150,8 +202,21 @@ export function calculateEmissions(
 }
 
 /**
- * Estimates the starting annual carbon footprint (in kg CO2e) for a user based on onboarding questions.
- * Also computes a recommended daily budget (in kg CO2e).
+ * Estimates the starting annual carbon footprint and recommended daily budget
+ * for a user based on their onboarding profile.
+ *
+ * Methodology:
+ * 1. **Food** — annual diet footprint (individual).
+ * 2. **Transport** — weekly km × 52 weeks × modal emission factor.
+ * 3. **Electricity** — monthly kWh × 12 × grid intensity, split by household.
+ * 4. **Heating** — monthly qty × 12 × fuel factor, split by household.
+ * 5. **Waste** — 450 kg/yr base, adjusted for recycling/composting practices.
+ *
+ * The daily budget is set at 85% of the baseline daily rate (a 15% reduction),
+ * bounded between the Paris-aligned target (6.3 kg/day ≈ 2.3 t/yr) and 25 kg/day.
+ *
+ * @param profile - User profile from onboarding.
+ * @returns Object with `annualFootprintKg` (integer) and `dailyBudgetKg` (1 decimal).
  */
 export function calculateOnboardingFootprint(profile: UserProfile): {
   annualFootprintKg: number;
@@ -196,7 +261,7 @@ export function calculateOnboardingFootprint(profile: UserProfile): {
   let annualWasteFootprint = baseWasteKg * WASTE_FACTORS["landfill"]; // 225 kg CO2e
   if (profile.recycleCompost) {
     // 70% recycled (0.10 factor), 30% landfill (0.50 factor)
-    annualWasteFootprint = (baseWasteKg * 0.70 * WASTE_FACTORS["recycling"]) + 
+    annualWasteFootprint = (baseWasteKg * 0.70 * WASTE_FACTORS["recycling"]) +
                            (baseWasteKg * 0.30 * WASTE_FACTORS["landfill"]); // 31.5 + 67.5 = 99 kg CO2e
   }
 
@@ -210,13 +275,9 @@ export function calculateOnboardingFootprint(profile: UserProfile): {
   );
 
   // Daily budget calculation:
-  // We want to set a target budget that is ambitious but achievable.
-  // The daily baseline is onboarding annual footprint / 365.
-  // We'll set a budget that cuts 15% from their baseline, or caps it at 15 kg/day
-  // to avoid setting extreme budgets. The Paris Target is ~6.3 kg/day (2.3 tons/year).
+  // Set a target that cuts 15% from baseline, bounded between 6.3 and 25 kg/day.
+  // The Paris Target is ~6.3 kg/day (2.3 tons/year).
   const baselineDaily = annualFootprintKg / 365;
-  
-  // Reduce by 15% for starting budget, bounded between Paris target (6.3 kg) and a maximum of 25 kg.
   let dailyBudgetKg = Number((baselineDaily * 0.85).toFixed(1));
   if (dailyBudgetKg < 6.3) dailyBudgetKg = 6.3;
   if (dailyBudgetKg > 25.0) dailyBudgetKg = 25.0;

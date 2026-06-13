@@ -27,31 +27,50 @@ const app = express();
 app.use(compression());
 
 // 2. Helmet for security headers
-app.use(helmet({
-  contentSecurityPolicy: {
-    directives: {
-      defaultSrc: ["'self'"],
-      scriptSrc: ["'self'", "'unsafe-inline'", "'unsafe-eval'"],
-      styleSrc: ["'self'", "'unsafe-inline'", "https://fonts.googleapis.com"],
-      fontSrc: ["'self'", "https://fonts.gstatic.com"],
-      imgSrc: ["'self'", "data:", "blob:"],
-      connectSrc: ["'self'", "http://localhost:3000", "ws://localhost:3000"]
-    }
-  }
-}));
+app.use(
+  helmet({
+    contentSecurityPolicy: {
+      directives: {
+        defaultSrc: ["'self'"],
+        scriptSrc: ["'self'"],
+        styleSrc: ["'self'", "'unsafe-inline'", "https://fonts.googleapis.com"],
+        fontSrc: ["'self'", "https://fonts.gstatic.com"],
+        imgSrc: ["'self'", "data:", "blob:"],
+        connectSrc: ["'self'"],
+      },
+    },
+    referrerPolicy: { policy: "strict-origin-when-cross-origin" },
+    crossOriginResourcePolicy: { policy: "same-origin" },
+    crossOriginEmbedderPolicy: false,
+  })
+);
 
-// 3. CORS setup with origin limits (only applied to /api routes)
-const allowedOrigins = ["http://localhost:3000", `http://localhost:${env.PORT}`, env.CORS_ORIGIN];
-app.use("/api", cors({
-  origin: (origin, callback) => {
-    if (!origin || allowedOrigins.indexOf(origin) !== -1) {
-      callback(null, true);
-    } else {
-      callback(null, false);
-    }
-  },
-  credentials: true
-}));
+// 3. CORS setup with production guard
+const allowedOrigins = ["http://localhost:3000", "http://localhost:5000"];
+app.use(
+  cors({
+    origin: (origin, callback) => {
+      // Allow requests with no origin (e.g. server-to-server)
+      if (!origin) return callback(null, true);
+
+      if (env.NODE_ENV === "production") {
+        // In production, reject localhost origins
+        if (origin.includes("localhost") || origin.includes("127.0.0.1")) {
+          return callback(new Error("CORS: localhost origins blocked in production"));
+        }
+        return callback(null, true);
+      }
+
+      // In development, allow configured origins
+      if (allowedOrigins.includes(origin)) {
+        return callback(null, true);
+      }
+      return callback(new Error("CORS: origin not allowed"));
+    },
+    methods: ["GET", "POST", "PUT", "DELETE"],
+    credentials: true,
+  })
+);
 
 // 4. Request JSON body parser with size limit
 app.use(express.json({ limit: "50kb" }));

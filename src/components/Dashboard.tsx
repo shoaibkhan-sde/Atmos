@@ -1,7 +1,7 @@
 import React, { Suspense, useMemo, useState } from "react";
 import { ActivityLog, UserProfile } from "../lib/emissionFactors";
 import { ChartSkeleton } from "./Skeleton";
-import { AlertCircle, Trees, Car, Table, LayoutGrid } from "lucide-react";
+import { AlertCircle, Trees, Car, Table, LayoutGrid, Flame } from "lucide-react";
 import { DashboardEmptyState } from "./DashboardEmptyState";
 
 // Lazy load Recharts elements
@@ -11,10 +11,12 @@ interface DashboardProps {
   profile: UserProfile;
   activities: ActivityLog[];
   dailyBudget: number;
+  /** Current consecutive logging streak in days. */
+  streak: number;
   onNavigate: (tab: string) => void;
 }
 
-export const Dashboard: React.FC<DashboardProps> = ({ activities, dailyBudget, onNavigate }) => {
+export const Dashboard: React.FC<DashboardProps> = ({ activities, dailyBudget, streak, onNavigate }) => {
   const [viewMode, setViewMode] = useState<"visual" | "table">("visual");
   const [timeRange, setTimeRange] = useState<7 | 30 | 90>(7);
 
@@ -165,31 +167,43 @@ export const Dashboard: React.FC<DashboardProps> = ({ activities, dailyBudget, o
       <div className="flex justify-between items-center">
         <div>
           <h2 className="text-2xl font-bold tracking-tight text-white">Carbon Ledger</h2>
-          <p className="text-sm text-muted font-tabular">Today: {todayStr}</p>
+          <p className="text-xs text-muted mt-0.5">Understand your carbon footprint at a glance. Every activity is a debit against your daily carbon budget.</p>
         </div>
-        
-        {/* Accessibility Layout Mode Toggle */}
-        <div className="flex bg-surface border border-border rounded-lg p-1 space-x-1">
-          <button
-            onClick={() => setViewMode("visual")}
-            aria-label="Switch to visual chart view"
-            aria-pressed={viewMode === "visual"}
-            className={`p-1.5 rounded transition-all ${
-              viewMode === "visual" ? "bg-border text-white" : "text-muted hover:text-white"
-            }`}
+
+        <div className="flex items-center gap-3">
+          {/* Streak Badge — visible on Dashboard (Track pillar) */}
+          <div
+            className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-orange-500/10 border border-orange-500/20 text-orange-500 font-bold font-tabular"
+            role="status"
+            aria-label={`Current logging streak: ${streak} days`}
           >
-            <LayoutGrid size={16} />
-          </button>
-          <button
-            onClick={() => setViewMode("table")}
-            aria-label="Switch to accessible table data view"
-            aria-pressed={viewMode === "table"}
-            className={`p-1.5 rounded transition-all ${
-              viewMode === "table" ? "bg-border text-white" : "text-muted hover:text-white"
-            }`}
-          >
-            <Table size={16} />
-          </button>
+            <Flame className="animate-pulse" size={16} fill="currentColor" />
+            <span className="text-sm">{streak}d</span>
+          </div>
+
+          {/* Accessibility Layout Mode Toggle */}
+          <div className="flex bg-surface border border-border rounded-lg p-1 space-x-1">
+            <button
+              onClick={() => setViewMode("visual")}
+              aria-label="Switch to visual chart view"
+              aria-pressed={viewMode === "visual"}
+              className={`p-2 rounded transition-all min-w-[36px] min-h-[36px] flex items-center justify-center ${
+                viewMode === "visual" ? "bg-border text-white" : "text-muted hover:text-white"
+              }`}
+            >
+              <LayoutGrid size={16} />
+            </button>
+            <button
+              onClick={() => setViewMode("table")}
+              aria-label="Switch to accessible table data view"
+              aria-pressed={viewMode === "table"}
+              className={`p-2 rounded transition-all min-w-[36px] min-h-[36px] flex items-center justify-center ${
+                viewMode === "table" ? "bg-border text-white" : "text-muted hover:text-white"
+              }`}
+            >
+              <Table size={16} />
+            </button>
+          </div>
         </div>
       </div>
 
@@ -246,8 +260,8 @@ export const Dashboard: React.FC<DashboardProps> = ({ activities, dailyBudget, o
           </div>
         </div>
 
-        {/* Real-world Equivalency Translations */}
-        <div className="md:col-span-2 grid grid-cols-1 sm:grid-cols-2 gap-6">
+        {/* Real-world Equivalency Translations (Understand pillar: concrete comparisons) */}
+        <div className="md:col-span-2 grid grid-cols-1 sm:grid-cols-2 gap-6" aria-live="polite">
           {/* Equivalency Card 1: Trees */}
           <div className="ledger-card flex flex-col justify-between p-6 min-h-[300px]">
             <div className="flex items-start gap-4">
@@ -286,7 +300,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ activities, dailyBudget, o
             <div className="mt-4 border-t border-border/40 pt-4 flex flex-col justify-end flex-grow">
               <div className="flex items-baseline gap-2">
                 <span className="text-4xl font-extrabold font-tabular text-white">{carDistanceEquivalentKm}</span>
-                <span className="text-xs font-bold text-white text-sm">km</span>
+                <span className="text-sm font-bold text-white">km</span>
                 <span className="text-sm text-muted font-semibold">Travelled</span>
               </div>
               <p className="text-xs text-muted mt-2 leading-relaxed">
@@ -395,12 +409,12 @@ export const Dashboard: React.FC<DashboardProps> = ({ activities, dailyBudget, o
         </div>
       )}
 
-      {/* Comparison Panel (Projected Annual vs Global/National/Paris) */}
+      {/* Comparison Panel (Projected Annual vs Global/National/Paris) — Understand pillar */}
       <div className="ledger-card space-y-6">
         <div className="space-y-1">
           <h3 className="text-base font-bold text-white">Yearly carbon comparison</h3>
           <p className="text-xs text-muted">
-            Your projected annual emissions (extrapolated from logged data) vs. standard targets, in metric tons (t CO2e/year).
+            <strong>Why this matters:</strong> Understanding how your footprint compares to global benchmarks is the first step to reducing it. The Paris Agreement targets 2.3 tonnes per person by 2030.
           </p>
         </div>
 
