@@ -1,3 +1,4 @@
+/* eslint-disable react-hooks/set-state-in-effect */
 import React, { useState, useMemo, useEffect } from "react";
 import { ActivityLog } from "../lib/emissionFactors";
 import { Plus } from "lucide-react";

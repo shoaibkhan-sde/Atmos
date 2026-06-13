@@ -1,6 +1,7 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import { describe, it, expect } from "vitest";
 import { sanitizeString } from "../../server/middleware/validate";
-import { renderSafeAIContent } from "../components/AtmosCoach";
+import { renderSafeAIContent } from "../utils/sanitizer";
 
 describe("Sanitizer Validation Tests", () => {
   describe("server: sanitizeString", () => {
