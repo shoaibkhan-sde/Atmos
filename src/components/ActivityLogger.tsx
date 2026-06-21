@@ -131,7 +131,7 @@ export const ActivityLogger: React.FC<ActivityLoggerProps> = ({
   };
 
   return (
-    <section className="space-y-6" aria-label="Transaction Ledger">
+    <section className="space-y-6" aria-label="Transaction Ledger" data-testid="activity-ledger">
       {/* Header and Streak Counter */}
       <div className="flex justify-between items-center bg-surface border border-border p-4 rounded-xl">
         <div>
@@ -203,7 +203,7 @@ export const ActivityLogger: React.FC<ActivityLoggerProps> = ({
             </div>
 
             {/* List */}
-            <div className="border border-border rounded-xl overflow-hidden">
+            <div className="border border-border rounded-xl overflow-hidden" data-testid="emission-log-table">
               {paginatedActivities.length > 0 ? (
                 <div className="overflow-x-auto">
                   <table className="w-full text-left text-xs">

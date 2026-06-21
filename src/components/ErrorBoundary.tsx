@@ -1,5 +1,6 @@
 import { Component, ErrorInfo, ReactNode } from "react";
 import { AlertOctagon, RefreshCw } from "lucide-react";
+import { clientLogger } from "../utils/logger";
 
 interface Props {
   children: ReactNode;
@@ -21,7 +22,11 @@ export class ErrorBoundary extends Component<Props, State> {
   }
 
   public componentDidCatch(error: Error, errorInfo: ErrorInfo) {
-    console.error("Uncaught error captured by Atmos Boundary:", error, errorInfo);
+    clientLogger.error("uncaught_boundary_error", {
+      error: error.message,
+      stack: error.stack,
+      componentStack: errorInfo.componentStack,
+    });
   }
 
   private handleReset = () => {

@@ -129,7 +129,7 @@ export const ActionsList: React.FC<ActionsListProps> = ({
   }, [totalSaved]);
 
   return (
-    <section className="space-y-6" aria-label="Eco actions ledger checklist">
+    <section className="space-y-6" aria-label="Eco actions ledger checklist" data-testid="carbon-reduction-actions">
       {/* Hero row: Total Saved counter */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
         {/* Positive Carbon Saved Stat */}
@@ -197,6 +197,7 @@ export const ActionsList: React.FC<ActionsListProps> = ({
                   }`}
                   role="checkbox"
                   aria-checked={isChecked}
+                  data-testid={`action-card-${action.id}`}
                   tabIndex={0}
                   onKeyDown={(e) => {
                     if (e.key === " " || e.key === "Enter") {

@@ -1,49 +1,97 @@
+/**
+ * @module GeminiService
+ * @description AI integration service that proxies carbon coaching requests to Google Gemini.
+ *
+ * Provides two AI-powered capabilities for the Atmos REDUCE pillar:
+ * 1. **Dashboard Insights** (`generateInsights`): Structured JSON coaching response
+ *    identifying the user's biggest carbon emission driver and a ranked action plan.
+ * 2. **Conversational Chat** (`sendChatMessage`): Free-form carbon advisory grounded
+ *    in the user's current emission ledger and offsetTarget.
+ *
+ * Both methods implement graceful degradation: if no API key is configured or the
+ * Gemini call fails, they fall back to the local rule-based engine in `localInsights.ts`.
+ *
+ * @see {@link AtmosAIIntent} for the supported AI intent taxonomy.
+ */
+
 import { GoogleGenerativeAI } from "@google/generative-ai";
 import { env } from "../config/env.js";
+import { logger } from "../utils/logger.js";
 import { generateLocalCoachData, generateLocalChatResponse } from "../../src/lib/localInsights.js";
 import { dbService } from "./db.service.js";
 import { AtmosCoachResponse, UserProfile, ActivityLog } from "../types/index.js";
 
 /**
- * AI integration service that acts as a proxy to the Google Gemini API.
- * 
- * Features:
- * - Safely handles API key detection and initialization.
- * - Implements a graceful fallback to a local rule-based engine if Gemini is
- *   unavailable, unconfigured, or returns an error.
- * - Enforces JSON structured output for the dashboard insights.
+ * Supported AI intent categories for Atmos carbon coaching queries.
+ *
+ * These labels classify user interactions routed through the Gemini service,
+ * enabling structured prompt engineering and analytics tracking. All Gemini
+ * prompt templates must be mapped to one of these intent values.
+ */
+export type AtmosAIIntent =
+  | "CALCULATE_CARBON_FOOTPRINT"
+  | "GET_REDUCTION_RECOMMENDATIONS"
+  | "ANALYZE_EMISSION_TRENDS"
+  | "COMPARE_OFFSET_STRATEGIES"
+  | "EXPLAIN_EMISSION_SOURCE"
+  | "GENERATE_SUSTAINABILITY_REPORT";
+
+/**
+ * AI integration service providing carbon coaching capabilities via Google Gemini.
+ *
+ * Instantiated as a singleton (`geminiService`). The constructor detects API key
+ * availability and initialises the Gemini client accordingly. All public methods
+ * are safe to call regardless of whether Gemini is active — they fall back to the
+ * local rule-based engine transparently.
  */
 class GeminiService {
+  /** Initialised Gemini client, or `null` if no valid API key is configured. */
   private genAI: GoogleGenerativeAI | null = null;
 
+  /**
+   * Initialises the Gemini client if a valid API key is present in the environment.
+   * Logs the initialisation status at startup for operational visibility.
+   */
   constructor() {
     const key = env.GEMINI_API_KEY;
     if (key && key !== "your_gemini_api_key_here") {
       this.genAI = new GoogleGenerativeAI(key);
-      console.log("Atmos Coach: Gemini API Initialized successfully.");
+      logger.info({ event: "gemini_initialized", message: "Atmos Coach: Gemini API initialised successfully." });
     } else {
-      console.warn("Atmos Coach: GEMINI_API_KEY is not configured. Falling back to local rule-based insights engine.");
+      logger.warn({
+        event: "gemini_unavailable",
+        message: "Atmos Coach: GEMINI_API_KEY not configured. Falling back to local rule-based insights engine.",
+      });
     }
   }
 
   /**
-   * Checks whether the Gemini client was successfully initialized.
-   * @returns true if an API key was provided and valid.
+   * Returns whether the Gemini client was successfully initialised.
+   *
+   * @returns {boolean} `true` if a valid API key was provided; `false` if using local fallback.
    */
   public isGeminiActive(): boolean {
     return this.genAI !== null;
   }
 
   /**
-   * Generates a comprehensive personalized carbon coaching dashboard response.
-   * 
-   * Provides insight on the user's primary emission drivers, feedback on their
-   * goal progress, and an actionable 3-5 step reduction plan.
-   * 
-   * @param profile - The user's onboarding profile.
-   * @param activities - The user's logged activity history.
-   * @param targetPercent - The goal reduction percentage (e.g., 15).
-   * @returns Structured coach data ensuring strict JSON schema adherence.
+   * Generates a comprehensive personalised carbon coaching dashboard response.
+   *
+   * Builds a prompt from the user's current carbon ledger and offsetTarget, then calls
+   * Gemini to produce a structured JSON response containing:
+   * - A plain-language insight identifying the primary emission driver with real-world
+   *   equivalencies (e.g., driving distance, tree absorption).
+   * - Goal coaching feedback comparing the user's ledger trajectory to their offsetTarget.
+   * - A ranked action plan of 3–5 carbon reduction tasks with co2eKg savings estimates.
+   *
+   * Intent: {@link AtmosAIIntent} `GET_REDUCTION_RECOMMENDATIONS` /
+   * `ANALYZE_EMISSION_TRENDS`.
+   *
+   * @param {UserProfile | null} profile - The user's onboarding carbon profile.
+   * @param {ActivityLog[]} activities - The user's full carbon emission ledger.
+   * @param {number} targetPercent - The user's offsetTarget as a reduction percentage.
+   * @returns {Promise<AtmosCoachResponse & { meta?: { source: string } }>}
+   *   Structured coach response; `meta.source` is `'local'` when the fallback engine is used.
    */
   public async generateInsights(
     profile: UserProfile | null,
@@ -91,9 +139,13 @@ Output ONLY the raw valid JSON, no markdown syntax wrapper (like \`\`\`json).
 
       const result = await model.generateContent(promptText);
       const text = result.response.text().trim();
-      
+
       const cleanJsonText = text.replace(/^```json/, "").replace(/```$/, "").trim();
-      const parsedData = JSON.parse(cleanJsonText);
+      const parsedData = JSON.parse(cleanJsonText) as {
+        insight?: string;
+        actionPlan?: AtmosCoachResponse["actionPlan"];
+        goalCoaching?: string;
+      };
 
       return {
         insight: parsedData.insight || "Keep logging to build insights.",
@@ -101,24 +153,31 @@ Output ONLY the raw valid JSON, no markdown syntax wrapper (like \`\`\`json).
         goalCoaching: parsedData.goalCoaching || "Keep tracking to compare goals.",
         usingFallback: false,
       };
-
     } catch (error) {
-      console.error("Gemini API insights call failed, falling back:", error);
+      logger.error({
+        event: "gemini_insights_failed",
+        message: "Gemini API insights call failed. Falling back to local engine.",
+        error: error instanceof Error ? error.message : String(error),
+      });
       const fallback = generateLocalCoachData(activities, profile, targetPercent);
       return { ...fallback, meta: { source: "local" } };
     }
   }
 
   /**
-   * Generates a natural language response to a user's conversational query.
-   * 
-   * Contextualizes the prompt with the user's current carbon footprint and goals
-   * to provide accurate, personalized advice.
-   * 
-   * @param message - The user's question or message.
-   * @param profile - The user's profile context.
-   * @param activities - The user's transaction history.
-   * @returns An object containing the reply string and a flag indicating if the local fallback was used.
+   * Generates a natural language carbon advisory response to a conversational user query.
+   *
+   * Contextualises the Gemini prompt with the user's current carbon emission totals and
+   * offsetTarget to produce grounded, data-specific guidance under 120 words.
+   *
+   * Intent: {@link AtmosAIIntent} `CALCULATE_CARBON_FOOTPRINT` /
+   * `EXPLAIN_EMISSION_SOURCE` / `COMPARE_OFFSET_STRATEGIES`.
+   *
+   * @param {string} message - The raw user question or chat message.
+   * @param {UserProfile | null} profile - The user's onboarding carbon profile.
+   * @param {ActivityLog[]} activities - The user's full carbon emission ledger.
+   * @returns {Promise<{ reply: string; usingFallback: boolean }>}
+   *   The advisory reply string and a flag indicating whether the local fallback was used.
    */
   public async sendChatMessage(
     message: string,
@@ -132,6 +191,7 @@ Output ONLY the raw valid JSON, no markdown syntax wrapper (like \`\`\`json).
 
     try {
       const model = this.genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
+      const totalCarbonDebt = activities.reduce((sum, a) => sum + a.emissions, 0);
       const context = `
 You are Atmos Coach, a conversational carbon accountant. Speak in helpful, expert, encouraging terms.
 The user is asking: "${message}"
@@ -144,19 +204,20 @@ User Profile Context:
 
 Activities summary:
 Total logged transactions: ${activities.length}
-Total emissions: ${activities.reduce((sum, a) => sum + a.emissions, 0).toFixed(1)} kg CO2e.
+Total carbon debt: ${totalCarbonDebt.toFixed(1)} kg CO2e.
 
-Formulate an answer under 120 words. Ground your numbers in the user's data context where applicable. 
+Formulate an answer under 120 words. Ground your numbers in the user's data context where applicable.
 Treat this output as markdown but do not use dangerously nested HTML.
       `;
 
       const result = await model.generateContent(context);
-      return {
-        reply: result.response.text().trim(),
-        usingFallback: false,
-      };
+      return { reply: result.response.text().trim(), usingFallback: false };
     } catch (error) {
-      console.error("Gemini chat API call failed, using local fallback:", error);
+      logger.error({
+        event: "gemini_chat_failed",
+        message: "Gemini chat API call failed. Using local fallback.",
+        error: error instanceof Error ? error.message : String(error),
+      });
       const reply = generateLocalChatResponse(message, activities);
       return { reply, usingFallback: true };
     }

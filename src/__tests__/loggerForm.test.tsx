@@ -4,10 +4,15 @@ import { ActivityLogger } from "../components/ActivityLogger";
 import { ActivityLog } from "../lib/emissionFactors";
 
 describe("Atmos ActivityLogger Component UI", () => {
+  const todayStr = new Date().toISOString().split("T")[0];
+  const yesterday = new Date();
+  yesterday.setDate(yesterday.getDate() - 1);
+  const yesterdayStr = yesterday.toISOString().split("T")[0];
+
   const mockActivities: ActivityLog[] = [
     {
       id: "act_1",
-      date: "2026-06-12",
+      date: todayStr,
       category: "Transport",
       type: "car_petrol",
       value: 15,
@@ -16,7 +21,7 @@ describe("Atmos ActivityLogger Component UI", () => {
     },
     {
       id: "act_2",
-      date: "2026-06-11",
+      date: yesterdayStr,
       category: "Food",
       type: "vegan",
       value: 1,

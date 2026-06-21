@@ -5,6 +5,7 @@ import { AtmosCoachResponse, ActionPlanItem } from "../lib/localInsights";
 import { CoachSkeleton, Skeleton } from "./Skeleton";
 import { Send, Bot, User, Sparkles, Plus, AlertCircle } from "lucide-react";
 import { renderSafeAIContent } from "../utils/sanitizer";
+import { clientLogger } from "../utils/logger";
 
 interface AtmosCoachProps {
   profile: UserProfile;
@@ -45,7 +46,7 @@ export const AtmosCoach: React.FC<AtmosCoachProps> = ({
           setCoachData(data);
         }
       } catch (err) {
-        console.error("Failed to load AI Coach insights:", err);
+        clientLogger.error("insights_load_failed", { error: err instanceof Error ? err.message : String(err) });
       } finally {
         if (active) setLoadingInsights(false);
       }
@@ -101,7 +102,7 @@ export const AtmosCoach: React.FC<AtmosCoachProps> = ({
   };
 
   return (
-    <section className="space-y-6" aria-label="Atmos Coach Interface">
+    <section className="space-y-6" aria-label="Atmos Coach Interface" data-testid="atmos-coach-section">
       {/* Page Title & Status Badge */}
       <div className="flex justify-between items-center bg-surface border border-border p-4 rounded-xl">
         <div>
@@ -129,7 +130,7 @@ export const AtmosCoach: React.FC<AtmosCoachProps> = ({
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Insights & Recommendations Panel */}
-        <div className="lg:col-span-2 space-y-6">
+        <div className="lg:col-span-2 space-y-6" data-testid="coach-insights-panel" aria-busy={loadingInsights}>
           {loadingInsights ? (
             <CoachSkeleton />
           ) : coachData ? (
@@ -225,7 +226,7 @@ export const AtmosCoach: React.FC<AtmosCoachProps> = ({
           </header>
 
           {/* Messages Scroll Area */}
-          <div className="flex-1 overflow-y-auto space-y-4 pr-1 mb-4">
+          <div className="flex-1 overflow-y-auto space-y-4 pr-1 mb-4" data-testid="ai-chat-log" role="log" aria-live="polite" aria-relevant="additions">
             {chatMessages.length === 0 ? (
               <div className="h-full flex flex-col items-center justify-center text-center px-4 text-muted py-12">
                 <Bot size={36} className="text-muted mb-2 animate-bounce" />

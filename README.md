@@ -44,6 +44,32 @@ Atmos addresses the core PromptWars Virtual Challenge 3 criteria across three fu
 
 ---
 
+## 📊 CO₂e Methodology & Calculations
+
+Atmos calculates carbon ledger debits and savings using Carbon Dioxide Equivalent ($\text{CO}_2\text{e}$) metrics. This methodology consolidates the warming potential of various greenhouse gases (such as carbon dioxide, methane, and nitrous oxide) into a single index representing the mass of $\text{CO}_2$ that would cause equivalent warming over a 100-year timescale.
+
+### 1. Emission Factor Data Sources
+Our calculation formulas and factors are based on canonical public emissions databases:
+* **IPCC (Intergovernmental Panel on Climate Change)**: Guidelines for national greenhouse gas inventories.
+* **DEFRA (UK Department for Environment, Food & Rural Affairs)**: Carbon factor database for transport, materials, and waste.
+* **EPA (US Environmental Protection Agency)**: eGRID coefficients for regional electricity grid intensity factors, plus greenhouse gas equivalencies.
+
+### 2. Emission Source Categories
+* **Transport**: Calculates transit emissions by multiplying travel distance by vehicle intensity factors (e.g., Petrol Car: $0.18\text{ kg CO}_2\text{e/km}$, Train: $0.03\text{ kg CO}_2\text{e/km}$).
+* **Energy**: Measures home utility footprints. Grid electricity factor changes based on region (US: $0.38\text{ kg CO}_2\text{e/kWh}$, IN: $0.82\text{ kg CO}_2\text{e/kWh}$ due to high coal dependence). Heating fuels are measured by volume (e.g., Heating Oil: $2.7\text{ kg CO}_2\text{e/L}$).
+* **Food**: Diet-based carbon intensity estimates (e.g., Vegan: $1,500\text{ kg CO}_2\text{e/yr}$, Meat-heavy: $3,300\text{ kg CO}_2\text{e/yr}$) mapped to daily ledger debits.
+* **Shopping & Waste**: Evaluates disposal patterns (Landfill: $0.50\text{ kg CO}_2\text{e/kg}$ vs. Composting: $0.05\text{ kg CO}_2\text{e/kg}$).
+
+### 3. Sustainability Score & Goal Calculations
+* **Baseline Calculation**: Onboarding survey responses are used to estimate the user's initial annual carbon footprint.
+* **Daily Carbon Budget**: Calculated dynamically by dividing the onboarding annual footprint by 365. The daily budget is capped to a maximum of $25.0\text{ kg CO}_2\text{e/day}$ and a minimum floor of $6.3\text{ kg CO}_2\text{e/day}$ (Paris Agreement alignment).
+* **Sustainability Score**: An index computed dynamically based on the percentage of days in the current cycle where the user stayed within their budget limit.
+
+### 4. AI-Powered Optimization (Google Gemini)
+* **Atmos Coach** evaluates the historical activity ledger, matches user behavior against their target reduction goals, and uses Gemini to recommend ranked carbon-saving actions with estimated weekly $\text{CO}_2\text{e}$ savings.
+
+---
+
 ## 🛠️ Technology Stack
 
 Atmos is engineered as a unified monorepo:

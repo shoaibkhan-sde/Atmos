@@ -1,4 +1,23 @@
+/**
+ * @module LocalInsights
+ * @description Local rule-based carbon coaching engine for the Atmos platform.
+ *
+ * Provides the fallback advisory system that activates when:
+ * - No Gemini API key is configured in the environment.
+ * - The Gemini API call fails or times out.
+ *
+ * The engine analyses the user's carbon emission ledger and onboarding profile to:
+ * - Identify the primary emission driver category and its percentage of total co2eKg.
+ * - Generate 3–5 personalised carbon reduction actions ranked by weekly co2eKg savings.
+ * - Produce goal coaching feedback comparing daily ledger averages against the offsetTarget.
+ * - Respond to conversational queries using emission-factor-grounded keyword matching.
+ *
+ * All co2eKg values are sourced from the canonical {@link EmissionFactors} constants,
+ * ensuring consistency between the rule-based and AI-powered paths.
+ */
+
 import {
+
   ActivityLog,
   UserProfile,
   GRID_INTENSITIES,

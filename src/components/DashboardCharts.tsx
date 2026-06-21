@@ -26,6 +26,15 @@ export const DashboardCharts: React.FC<DashboardChartsProps> = ({ categoryData, 
     return `${num.toFixed(1)} kg`;
   };
 
+  const totalEmissions = React.useMemo(() => {
+    return categoryData.reduce((sum, c) => sum + c.value, 0);
+  }, [categoryData]);
+
+  const peakEmission = React.useMemo(() => {
+    if (trendData.length === 0) return 0;
+    return Math.max(...trendData.map((d) => d.amount));
+  }, [trendData]);
+
   // Custom tooltips for dark theme
   const customTooltipStyle = {
     contentStyle: {
@@ -50,7 +59,7 @@ export const DashboardCharts: React.FC<DashboardChartsProps> = ({ categoryData, 
         <div className="flex-1 w-full h-[260px] flex items-center justify-center">
           {categoryData.some((c) => c.value > 0) ? (
             <ResponsiveContainer width="100%" height="100%">
-              <PieChart>
+              <PieChart role="img" aria-label={`Carbon emissions distribution by category. Total emissions logged is ${totalEmissions.toFixed(1)} kg CO2e.`}>
                 <Pie
                   data={categoryData.filter((c) => c.value > 0)}
                   cx="50%"
@@ -91,7 +100,7 @@ export const DashboardCharts: React.FC<DashboardChartsProps> = ({ categoryData, 
         <div className="flex-1 w-full h-[260px]">
           {trendData.length > 0 ? (
             <ResponsiveContainer width="100%" height="100%">
-              <AreaChart data={trendData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
+              <AreaChart data={trendData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }} role="img" aria-label={`Carbon emissions daily trend chart. Peak daily emissions reached ${peakEmission.toFixed(1)} kg CO2e.`}>
                 <defs>
                   <linearGradient id="colorTrend" x1="0" y1="0" x2="0" y2="1">
                     <stop offset="5%" stopColor="#06b6d4" stopOpacity={0.3} />

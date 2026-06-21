@@ -1,3 +1,16 @@
+/**
+ * @module App
+ * @description Root React application component for the Atmos Personal Carbon Ledger.
+ *
+ * Manages top-level rendering state including the initial loading screen, the
+ * onboarding flow (initial + edit modes), and the main authenticated shell with
+ * sidebar navigation and tab-based content routing.
+ *
+ * All carbon ledger state, offsetTarget management, and API synchronisation logic
+ * is delegated to the {@link useAppState} hook. This component acts as a thin
+ * composition shell with no business logic.
+ */
+
 import { Suspense } from "react";
 import { useAppState } from "./hooks/useAppState";
 import { Onboarding } from "./components/Onboarding";
@@ -15,11 +28,14 @@ import { ResetConfirmModal } from "./components/ResetConfirmModal";
 import { Leaf, Menu, X } from "lucide-react";
 
 /**
- * Root application component. Manages top-level routing between
- * Onboarding, Profile Edit, and the main dashboard layout.
+ * Root application component for the Atmos Personal Carbon Ledger & Action Platform.
  *
- * All state management is delegated to the `useAppState` hook;
- * this component is a thin composition shell.
+ * Manages top-level rendering across three states:
+ * - **Loading**: Shows a spinner while the carbon ledger syncs from the server.
+ * - **Onboarding**: Renders the profile setup wizard for new or profile-editing users.
+ * - **Main Shell**: Renders the sidebar navigation and tab-routed content panels.
+ *
+ * @returns {React.JSX.Element} The root application element tree.
  */
 function App(): React.JSX.Element {
   const state = useAppState();

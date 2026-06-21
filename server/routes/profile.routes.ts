@@ -1,25 +1,19 @@
+/**
+ * @module ProfileRoutes
+ * @description Express router binding profile endpoints to the ProfileController.
+ *
+ * Routes:
+ * - `GET  /api/profile` → Retrieve the current user's onboarding carbon profile
+ * - `POST /api/profile` → Save/update the user's onboarding carbon profile (validated)
+ */
+
 import { Router } from "express";
-import { dbService } from "../services/db.service.js";
 import { validate, profileSchema } from "../middleware/validate.js";
-import { cacheService } from "../services/cache.service.js";
+import * as ProfileController from "../controllers/profile.controller.js";
 
 const router = Router();
 
-router.get("/", (req, res) => {
-  const profile = dbService.getProfile();
-  res.json(profile);
-});
-
-router.post("/", validate(profileSchema), (req, res) => {
-  const updatedProfile = dbService.saveProfile(req.body);
-  
-  // Invalidate cache since profile changed
-  cacheService.invalidateAll();
-
-  res.json({
-    message: "Profile saved successfully",
-    profile: updatedProfile,
-  });
-});
+router.get("/", ProfileController.getProfile);
+router.post("/", validate(profileSchema), ProfileController.saveProfile);
 
 export default router;

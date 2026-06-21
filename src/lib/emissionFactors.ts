@@ -1,16 +1,20 @@
 /**
- * ATMOS EMISSION FACTORS & CALCULATIONS ENGINE
+ * @module EmissionFactors
+ * @description Canonical carbon emission intensity constants and calculation engine for Atmos.
  *
- * Central source of truth for all carbon emission intensity constants
- * and calculation formulas used across the application (both client-side
- * and server-side). No emission factor values should be duplicated
- * outside this module.
+ * This is the **single source of truth** for all CO₂ equivalent (CO₂e) emission factors
+ * and calculation logic used across the application — both client-side (React) and
+ * server-side (Express). No emission factor values should be duplicated outside this module.
  *
- * Sources:
- * - Greenhouse Gas Protocol (GHGP)
- * - UK Department for Environment, Food & Rural Affairs (DEFRA 2023)
- * - US Environmental Protection Agency (EPA GHG Emission Factors Hub 2023)
- * - IPCC (Intergovernmental Panel on Climate Change)
+ * All values are expressed in **kg CO₂e** (kilograms of CO₂ equivalent), which normalises
+ * different greenhouse gases (CO₂, CH₄, N₂O) to a common carbon-equivalent unit using
+ * 100-year Global Warming Potential (GWP100) multipliers from the IPCC.
+ *
+ * Emission Factor Sources:
+ * - **GHGP**: Greenhouse Gas Protocol Corporate Standard
+ * - **DEFRA 2023**: UK Department for Environment, Food & Rural Affairs
+ * - **EPA 2023**: US Environmental Protection Agency GHG Emission Factors Hub
+ * - **IPCC AR6**: Intergovernmental Panel on Climate Change Sixth Assessment Report
  */
 
 /**

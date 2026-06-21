@@ -1,3 +1,30 @@
+/**
+ * @module Atmos
+ * @description Express application entry point for the Atmos Personal Carbon Ledger API.
+ *
+ * Atmos addresses three fundamental pillars of individual climate action:
+ *
+ * 1. **UNDERSTAND** — Provides visual and textual breakdowns of personal carbon
+ *    emissions across Transport, Energy, Food, Shopping, and Waste categories,
+ *    with real-world equivalency comparisons against Paris Agreement targets.
+ *
+ * 2. **TRACK** — Records daily activity emissions as debit transactions against
+ *    a personalised carbon budget, with streak tracking and searchable history.
+ *
+ * 3. **REDUCE** — Integrates with Google Gemini to generate personalised, ranked
+ *    action plans with calculated weekly kg CO₂e savings, supported by a
+ *    conversational carbon advisory chat interface.
+ *
+ * Security middleware stack (applied in order):
+ * - `compression` — Gzip response compression
+ * - `helmet` — Security headers (CSP, HSTS, Referrer-Policy, CORP)
+ * - `cors` — Allowlist-based CORS with env-var origin configuration
+ * - `express.json` — Body parsing with 50 KB size limit
+ * - `globalRateLimiter` — Per-IP request throttling on all `/api/*` routes
+ * - `aiRateLimiter` — Tighter per-IP throttle on AI endpoints (applied in routes)
+ * - `errorHandler` — Centralised structured error response envelope
+ */
+
 import express from "express";
 import cors from "cors";
 import helmet from "helmet";
@@ -9,8 +36,10 @@ import { fileURLToPath } from "url";
 import { env } from "./config/env.js";
 import { globalRateLimiter } from "./middleware/rateLimiters.js";
 import { errorHandler } from "./middleware/errorHandler.js";
+import { logger } from "./utils/logger.js";
+import { HSTS_MAX_AGE_SECONDS } from "./constants/carbon.constants.js";
 
-// Routes imports
+// Route imports
 import healthRouter from "./routes/health.routes.js";
 import profileRouter from "./routes/profile.routes.js";
 import goalsRouter from "./routes/goals.routes.js";
@@ -23,10 +52,10 @@ const __dirname = path.dirname(__filename);
 
 const app = express();
 
-// 1. Compression middleware (gzip)
+// ─── 1. Compression ──────────────────────────────────────────────────────────
 app.use(compression());
 
-// 2. Helmet for security headers
+// ─── 2. Security Headers (Helmet) ────────────────────────────────────────────
 app.use(
   helmet({
     contentSecurityPolicy: {
@@ -39,29 +68,43 @@ app.use(
         connectSrc: ["'self'"],
       },
     },
+    // HSTS: Browsers will enforce HTTPS for 1 year on this domain and all subdomains
+    hsts: {
+      maxAge: HSTS_MAX_AGE_SECONDS,
+      includeSubDomains: true,
+      preload: true,
+    },
     referrerPolicy: { policy: "strict-origin-when-cross-origin" },
     crossOriginResourcePolicy: { policy: "same-origin" },
     crossOriginEmbedderPolicy: false,
   })
 );
 
-// 3. CORS setup with production guard
-const allowedOrigins = ["http://localhost:3000", "http://localhost:5000"];
+// ─── 3. CORS ─────────────────────────────────────────────────────────────────
+// Safe fallback to localhost origins if ALLOWED_ORIGINS env var is not set.
+// Without this fallback, an unset env var would cause `.split()` to throw a
+// runtime crash, breaking the application on deployment.
+const allowedOrigins = (
+  process.env.ALLOWED_ORIGINS || "http://localhost:5173,http://localhost:3000,http://localhost:5000"
+)
+  .split(",")
+  .filter(Boolean);
+
 app.use(
   cors({
     origin: (origin, callback) => {
-      // Allow requests with no origin (e.g. server-to-server)
+      // Allow server-to-server requests (no Origin header)
       if (!origin) return callback(null, true);
 
       if (env.NODE_ENV === "production") {
-        // In production, reject localhost origins
+        // Block localhost origins in production to prevent accidental data exposure
         if (origin.includes("localhost") || origin.includes("127.0.0.1")) {
           return callback(new Error("CORS: localhost origins blocked in production"));
         }
         return callback(null, true);
       }
 
-      // In development, allow configured origins
+      // In development, enforce the allowedOrigins allowlist
       if (allowedOrigins.includes(origin)) {
         return callback(null, true);
       }
@@ -72,13 +115,13 @@ app.use(
   })
 );
 
-// 4. Request JSON body parser with size limit
+// ─── 4. Body Parser ──────────────────────────────────────────────────────────
 app.use(express.json({ limit: "50kb" }));
 
-// 5. Global rate limiting for general API calls (mounted under `/api`)
+// ─── 5. Global Rate Limiting ─────────────────────────────────────────────────
 app.use("/api", globalRateLimiter);
 
-// 6. Router registrations
+// ─── 6. API Routes ───────────────────────────────────────────────────────────
 app.use("/api/health", healthRouter);
 app.use("/api/profile", profileRouter);
 app.use("/api/goals", goalsRouter);
@@ -86,47 +129,53 @@ app.use("/api/activities", activitiesRouter);
 app.use("/api/insights", insightsRouter);
 app.use("/api/chat", chatRouter);
 
-// 7. Production static serving of built frontend assets
+// ─── 7. Static Asset Serving (Production) ────────────────────────────────────
 if (env.NODE_ENV === "production") {
   const distPath = path.resolve(__dirname, "../dist");
-  console.log(`Serving static files in production from: ${distPath}`);
-  
+  logger.info({ event: "static_serving_enabled", distPath });
+
   if (fs.existsSync(distPath)) {
-    app.use(express.static(distPath, {
-      setHeaders: (res, filePath) => {
-        if (path.extname(filePath) === ".html") {
-          res.setHeader("Cache-Control", "no-store, no-cache, must-revalidate, proxy-revalidate");
-          res.setHeader("Pragma", "no-cache");
-          res.setHeader("Expires", "0");
-        } else {
-          // Static assets (JS, CSS, images, etc.) are hashed and can be cached aggressively
-          res.setHeader("Cache-Control", "public, max-age=31536000, immutable");
-        }
-      }
-    }));
-    app.get(/.*/, (req, res) => {
+    app.use(
+      express.static(distPath, {
+        setHeaders: (res, filePath) => {
+          if (path.extname(filePath) === ".html") {
+            res.setHeader("Cache-Control", "no-store, no-cache, must-revalidate, proxy-revalidate");
+            res.setHeader("Pragma", "no-cache");
+            res.setHeader("Expires", "0");
+          } else {
+            // JS/CSS/image assets are content-hashed by Vite — safe to cache aggressively
+            res.setHeader("Cache-Control", "public, max-age=31536000, immutable");
+          }
+        },
+      })
+    );
+    app.get(/.*/, (_req, res) => {
       res.setHeader("Cache-Control", "no-store, no-cache, must-revalidate, proxy-revalidate");
       res.setHeader("Pragma", "no-cache");
       res.setHeader("Expires", "0");
       res.sendFile(path.join(distPath, "index.html"));
     });
   } else {
-    console.warn("Production build folder (dist) not found. Production asset serving is disabled.");
+    logger.warn({ event: "dist_not_found", message: "Production build folder (dist) not found. Static serving disabled." });
   }
 } else {
-  // Simple check root for development backend
-  app.get("/", (req, res) => {
+  app.get("/", (_req, res) => {
     res.send("Atmos Personal Carbon Ledger API is running. Direct your Vite dev server proxy here.");
   });
 }
 
-// 8. Centralized error handling envelope
+// ─── 8. Centralised Error Handler ────────────────────────────────────────────
 app.use(errorHandler);
 
-// 9. Startup server listener (except when running integration tests)
+// ─── 9. Server Start ─────────────────────────────────────────────────────────
 if (env.NODE_ENV !== "test") {
   app.listen(env.PORT, () => {
-    console.log(`Atmos Express Server running in ${env.NODE_ENV} mode on port ${env.PORT}`);
+    logger.info({
+      event: "server_started",
+      mode: env.NODE_ENV,
+      port: env.PORT,
+      message: `Atmos Express Server running in ${env.NODE_ENV} mode on port ${env.PORT}`,
+    });
   });
 }
 

@@ -1,27 +1,19 @@
+/**
+ * @module GoalsRoutes
+ * @description Express router binding goals endpoints to the GoalsController.
+ *
+ * Routes:
+ * - `GET  /api/goals` → Retrieve the current carbon reduction offsetTarget
+ * - `POST /api/goals` → Save updated offsetTarget values (validated)
+ */
+
 import { Router } from "express";
-import { dbService } from "../services/db.service.js";
 import { validate, goalsSchema } from "../middleware/validate.js";
-import { cacheService } from "../services/cache.service.js";
+import * as GoalsController from "../controllers/goals.controller.js";
 
 const router = Router();
 
-router.get("/", (req, res) => {
-  const goals = dbService.getGoals();
-  res.json(goals);
-});
-
-router.post("/", validate(goalsSchema), (req, res) => {
-  const { targetPercent, targetAnnualKg } = req.body;
-  
-  dbService.saveGoals(targetPercent, targetAnnualKg || 0);
-
-  // Invalidate cache
-  cacheService.invalidateAll();
-
-  res.json({
-    message: "Goals updated successfully",
-    goals: dbService.getGoals(),
-  });
-});
+router.get("/", GoalsController.getGoals);
+router.post("/", validate(goalsSchema), GoalsController.saveGoals);
 
 export default router;

@@ -162,7 +162,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ activities, dailyBudget, s
   }
 
   return (
-    <section className="space-y-6" aria-label="Ledger Dashboard">
+    <section className="space-y-6" aria-label="Ledger Dashboard" data-testid="carbon-ledger-dashboard">
       {/* Dashboard Toolbar */}
       <div className="flex justify-between items-center">
         <div>
@@ -210,7 +210,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ activities, dailyBudget, s
       {/* Hero row: Gauge + Quick Stats */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
         {/* Carbon Budget Ring Gauge */}
-        <div className="ledger-card flex flex-col items-center justify-center text-center p-6 md:col-span-1 min-h-[300px]">
+        <div className="ledger-card flex flex-col items-center justify-center text-center p-6 md:col-span-1 min-h-[300px]" data-testid="carbon-budget-meter">
           <h3 className="text-sm font-semibold text-muted mb-3 uppercase tracking-wider">Carbon Budget Ledger</h3>
           
           <div className="relative w-40 h-40 flex items-center justify-center mb-5 mt-1">
@@ -261,7 +261,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ activities, dailyBudget, s
         </div>
 
         {/* Real-world Equivalency Translations (Understand pillar: concrete comparisons) */}
-        <div className="md:col-span-2 grid grid-cols-1 sm:grid-cols-2 gap-6" aria-live="polite">
+        <div className="md:col-span-2 grid grid-cols-1 sm:grid-cols-2 gap-6" aria-live="polite" data-testid="emission-summary">
           {/* Equivalency Card 1: Trees */}
           <div className="ledger-card flex flex-col justify-between p-6 min-h-[300px]">
             <div className="flex items-start gap-4">
@@ -313,7 +313,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ activities, dailyBudget, s
 
       {/* Main content view: Visual Charts vs. Accessible Tables */}
       {viewMode === "visual" ? (
-        <div className="space-y-6">
+        <div className="space-y-6" data-testid="emission-chart">
           {/* Lazy loaded Recharts component */}
           <div className="flex justify-between items-center">
             <h3 className="text-lg font-bold text-white">Emissions analysis</h3>
@@ -410,7 +410,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ activities, dailyBudget, s
       )}
 
       {/* Comparison Panel (Projected Annual vs Global/National/Paris) — Understand pillar */}
-      <div className="ledger-card space-y-6">
+      <div className="ledger-card space-y-6" data-testid="comparison-panel">
         <div className="space-y-1">
           <h3 className="text-base font-bold text-white">Yearly carbon comparison</h3>
           <p className="text-xs text-muted">

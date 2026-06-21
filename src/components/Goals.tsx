@@ -88,7 +88,7 @@ export const Goals: React.FC<GoalsProps> = ({
   }, [profile]);
 
   return (
-    <section className="space-y-6" aria-label="Goals Ledger View">
+    <section className="space-y-6" aria-label="Goals Ledger View" data-testid="goals-section">
       {/* Title */}
       <div className="flex justify-between items-center bg-surface border border-border p-4 rounded-xl">
         <div>
