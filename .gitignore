@@ -32,3 +32,7 @@ all_my_code.txt
 *.njsproj
 *.sln
 *.sw?
+
+# Coverage directory
+coverage
+
