@@ -134,7 +134,7 @@ export const validate = (schema: z.ZodSchema<any>) => {
         event: "request_validation_failed",
         route: req.originalUrl,
         method: req.method,
-        details: error instanceof z.ZodError ? error.errors : String(error),
+        details: error instanceof z.ZodError ? error.issues : String(error),
       });
       if (error instanceof z.ZodError) {
         res.status(400).json({
